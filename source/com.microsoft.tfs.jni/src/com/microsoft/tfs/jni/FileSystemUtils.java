@@ -4,14 +4,23 @@
 package com.microsoft.tfs.jni;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.MessageFormat;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import com.microsoft.tfs.jni.helpers.FileCopyHelper;
 import com.microsoft.tfs.jni.internal.filesystem.NativeFileSystem;
+import com.microsoft.tfs.jni.internal.filesystem.NativeLinuxFileSystem;
 import com.microsoft.tfs.util.Check;
+import com.microsoft.tfs.util.temp.TempStorageService;
+import com.sun.jna.Platform;
 
 public class FileSystemUtils implements FileSystem {
     private static final FileSystemUtils instance = new FileSystemUtils();
+    private static final Log log = LogFactory.getLog(NativeLinuxFileSystem.class);
 
     /**
      * @return an instance of a {@link FileSystem} implementation full of
@@ -24,7 +33,11 @@ public class FileSystemUtils implements FileSystem {
     private final NativeFileSystem nativeImpl;
 
     private FileSystemUtils() {
-        nativeImpl = new NativeFileSystem();
+        if (Platform.isLinux()) {
+            nativeImpl = new NativeLinuxFileSystem();
+        } else {
+            nativeImpl = new NativeFileSystem();
+        }
     }
 
     @Override
@@ -68,12 +81,7 @@ public class FileSystemUtils implements FileSystem {
 
     @Override
     public boolean setAttributes(final String filepath, final FileSystemAttributes attributes) {
-        final FileSystemAttributes attrs = getAttributes(filepath);
-        if (attrs.isSymbolicLink()) {
-            return true;
-        }
-
-        return nativeImpl.setAttributes(filepath, attributes);
+        return setAttributes(new File(filepath), attributes);
     }
 
     /**
@@ -88,7 +96,40 @@ public class FileSystemUtils implements FileSystem {
          * for speed. This method is often used in tight scanning loops where
          * speed is important.
          */
-        return setAttributes(file.getPath(), attributes);
+        final String filepath = file.getPath();
+
+        final FileSystemAttributes attrs = getAttributes(filepath);
+        if (attrs.isSymbolicLink()) {
+            return true;
+        }
+
+        if (Platform.isLinux()
+            && attributesChanged(attrs, attributes)
+            && nativeImpl.getOwner(filepath).equals(System.getProperty("user.name"))) { //$NON-NLS-1$
+
+            /*
+             * Re-write the file to change its owner to the current user.
+             */
+            try {
+                final File tmp = File.createTempFile("teamexplorer", ".tmp", file.getParentFile()); //$NON-NLS-1$ //$NON-NLS-2$
+                FileCopyHelper.copy(filepath, tmp.getPath());
+                TempStorageService.getInstance().renameItem(tmp, file);
+            } catch (final FileNotFoundException e) {
+                log.error("Cannot find file " + filepath, e); //$NON-NLS-1$
+                return false;
+            } catch (final IOException e) {
+                log.error("Cannot copy file " + filepath, e); //$NON-NLS-1$
+                return false;
+            }
+        }
+
+        return nativeImpl.setAttributes(filepath, attributes);
+    }
+
+    private boolean attributesChanged(final FileSystemAttributes oldAttrs, final FileSystemAttributes newAttrs) {
+        return oldAttrs.isReadOnly() != oldAttrs.isReadOnly()
+            || oldAttrs.isPublicWritable() != oldAttrs.isPublicWritable()
+            || oldAttrs.isOwnerOnly() != oldAttrs.isOwnerOnly();
     }
 
     @Override
