@@ -94,7 +94,7 @@ public class FastTempOutputStream extends OutputStream {
     /**
      * The default limit on heap storage, after this size file storage is used.
      */
-    public static final int DEFAULT_HEAP_STORAGE_LIMIT_BYTES = 512 * 1024;
+    public static final int DEFAULT_HEAP_STORAGE_LIMIT_BYTES = 4 * 1024;
 
     /**
      * Holds the limit on heap storage we can't exceed. We track this
