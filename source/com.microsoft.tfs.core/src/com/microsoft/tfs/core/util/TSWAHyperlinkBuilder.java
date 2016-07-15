@@ -594,6 +594,9 @@ public class TSWAHyperlinkBuilder {
         final List<String> additionalQueryParams) {
         URI uri = null;
 
+        log.debug("Building URL for service: " + serviceType); //$NON-NLS-1$
+        log.debug("  Access Mapping Moniker: " + accessMappingMoniker); //$NON-NLS-1$
+
         String urlText = getURL(serviceType, accessMappingMoniker);
 
         if (urlText == null) {
@@ -717,6 +720,10 @@ public class TSWAHyperlinkBuilder {
         final ILocationService locationService,
         final String toolName) {
         final ServiceDefinition[] definitions = locationService.findServiceDefinitionsByToolType(toolName);
+
+        log.debug(
+            "Found defintions for the tool " + toolName + ": " + (definitions == null ? "null" : definitions.length)); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+
         if (definitions != null) {
             for (int i = 0; i < definitions.length; i++) {
                 if (definitions[i].getServiceType().equalsIgnoreCase(serviceType)) {

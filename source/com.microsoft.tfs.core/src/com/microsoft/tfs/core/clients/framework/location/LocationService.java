@@ -7,6 +7,9 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import com.microsoft.tfs.core.ServerCapabilities;
 import com.microsoft.tfs.core.TFSConnection;
 import com.microsoft.tfs.core.clients.framework.ServerDataProvider;
@@ -34,6 +37,9 @@ import com.microsoft.tfs.util.GUID;
  * @since TEE-SDK-10.1
  */
 public class LocationService implements ServerDataProvider {
+
+    private static final Log log = LogFactory.getLog(ServerDataProvider.class);
+
     private final PersistenceStoreProvider persistenceProvider;
     private final URI connectionBaseURI;
     private final LocationWebServiceProxy webServiceProxy;
@@ -224,9 +230,16 @@ public class LocationService implements ServerDataProvider {
         // Look in the cache.
         final ServiceDefinition[] definitions = getLocationCacheManager().findServicesByToolID(toolType);
 
+        log.debug("Cache contains defintions for the tool " //$NON-NLS-1$
+            + toolType
+            + ": " //$NON-NLS-1$
+            + (definitions == null ? "null" : definitions.length)); //$NON-NLS-1$
+
         // If we had a cache miss, go to the server to see if our cache is
         // current
         if (definitions == null) {
+            log.debug("Checking for server updates..."); //$NON-NLS-1$
+
             checkForServerUpdates();
 
             // Try again to see if we can find it now in case that something has
@@ -791,6 +804,7 @@ public class LocationService implements ServerDataProvider {
                 if (needToConnect(ConnectOptions.INCLUDE_SERVICES)) {
                     // If we haven't made a connection, do more than just query
                     // services
+                    log.debug("Connecting to the server and downloading sevices..."); //$NON-NLS-1$
                     connect(ConnectOptions.INCLUDE_SERVICES);
                     checkedForUpdates = true;
                 }
@@ -799,8 +813,17 @@ public class LocationService implements ServerDataProvider {
 
         if (!checkedForUpdates) {
             // Check the server to make sure we have up-to-date information
+            log.debug("We're connected. Dowloading all service definitions. Current change ID: " //$NON-NLS-1$
+                + getLocationCacheManager().getLastChangeID());
             final LocationServiceData data =
                 webServiceProxy.queryServices(ServiceTypeFilter.ALL, getLocationCacheManager().getLastChangeID());
+
+            log.debug("Service definitions recieved. Server change ID: " + data.getLastChangeID()); //$NON-NLS-1$
+            log.debug("                Default Access Mapping Moniker: " + data.getDefaultAccessMappingMoniker()); //$NON-NLS-1$
+            log.debug("                           Service definitions: " //$NON-NLS-1$
+                + (data.getServiceDefinitions() == null ? -1 : data.getServiceDefinitions().length));
+            log.debug("                         Client Cache is Fresh: " + data.isClientCacheFresh()); //$NON-NLS-1$
+
             getLocationCacheManager().loadServicesData(data, true);
         }
     }
