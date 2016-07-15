@@ -821,7 +821,7 @@ public class LocationService implements ServerDataProvider {
             log.debug("Service definitions recieved. Server change ID: " + data.getLastChangeID()); //$NON-NLS-1$
             log.debug("                Default Access Mapping Moniker: " + data.getDefaultAccessMappingMoniker()); //$NON-NLS-1$
             log.debug("                           Service definitions: " //$NON-NLS-1$
-                + (data.getServiceDefinitions() == null ? -1 : data.getServiceDefinitions().length));
+                + (data.getServiceDefinitions() == null ? "null" : data.getServiceDefinitions().length)); //$NON-NLS-1$
             log.debug("                         Client Cache is Fresh: " + data.isClientCacheFresh()); //$NON-NLS-1$
 
             getLocationCacheManager().loadServicesData(data, true);
