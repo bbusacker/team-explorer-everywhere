@@ -8,11 +8,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.xml.sax.Attributes;
 
 import com.microsoft.tfs.core.clients.workitem.form.WIFormElement;
 
 public abstract class WIFormElementImpl implements WIFormElement {
+    private static final Log log = LogFactory.getLog(WIFormElementImpl.class);
+
     private final List childElements = new ArrayList();
     private WIFormElementImpl parentElement;
 
@@ -41,6 +45,20 @@ public abstract class WIFormElementImpl implements WIFormElement {
     }
 
     Object[] childrenToArray(final Object[] a) {
+        if (childElements != null && childElements.size() > 0) {
+            List testList = new ArrayList();
+            Object[] testArray;
+            for (int i = 0; i < childElements.size(); i++) {
+                testList.add(childElements.get(i));
+                try {
+                    testArray = testList.toArray(a);
+                } catch (final Exception e) {
+                    log.error("childElement[" + i + "] causes the exception:", e); //$NON-NLS-1$ //$NON-NLS-2$
+                    log.error("element's class " + childElements.get(i).getClass().getSimpleName() +  //$NON-NLS-1$
+                              " cannot be converted to " + a.getClass().getComponentType().getSimpleName()); //$NON-NLS-1$
+                }
+            }
+        }
         return childElements.toArray(a);
     }
 

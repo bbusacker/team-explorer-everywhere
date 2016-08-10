@@ -38,15 +38,15 @@ public class WIFormParseHandler extends DefaultHandler {
      * elements in a WIT type definition. This table is used when a start tag is
      * parsed to instantiate the corresponding object model instance.
      */
-    private static HashMap elementNameMap;
+    private static HashMap<String, Constructor<?>> elementNameMap;
 
     /**
      * Static initializer for the element name to object model class constructor
      * map.
      */
     static {
-        elementNameMap = new HashMap();
-        final Class[] emptyArgs = new Class[0];
+        elementNameMap = new HashMap<String, Constructor<?>>();
+        final Class<?>[] emptyArgs = new Class[0];
 
         try {
             elementNameMap.put(
@@ -119,19 +119,24 @@ public class WIFormParseHandler extends DefaultHandler {
 
         try {
             final SAXParser parser = SAXParserFactory.newInstance().newSAXParser();
+            log.debug("parse xml to WIFormElement:"); //$NON-NLS-1$
+            log.debug("   length: " + (xml == null ? "-1" : xml.length())); //$NON-NLS-1$ //$NON-NLS-2$
+            log.debug("  content: " + (xml == null ? "NULL" : xml)); //$NON-NLS-1$ //$NON-NLS-2$
             parser.parse(new InputSource(new StringReader(xml)), handler);
         } catch (final SAXException ex) {
+            log.error(ex.getMessage(), ex);
             ex.initCause(ex.getException());
             throw new RuntimeException(ex);
         } catch (final Exception ex) {
+            log.error(ex.getMessage(), ex);
             throw new RuntimeException(ex);
         }
 
         return handler.root;
     }
 
-    private final List elementStack = new ArrayList();
-    private final Set handledElementNames = new HashSet();
+    private final List<WIFormElementImpl> elementStack = new ArrayList<WIFormElementImpl>();
+    private final Set<String> handledElementNames = new HashSet<String>();
     private WIFormElementImpl root;
 
     private void push(final WIFormElementImpl element) {
@@ -165,10 +170,11 @@ public class WIFormParseHandler extends DefaultHandler {
     public void startElement(final String uri, final String localName, final String qName, final Attributes attributes)
         throws SAXException {
         final String lowerElementName = qName.toLowerCase();
+        log.debug("  start element name: " + lowerElementName); //$NON-NLS-1$
         handledElementNames.add(lowerElementName);
 
         if (elementNameMap.containsKey(lowerElementName)) {
-            final Constructor c = (Constructor) elementNameMap.get(lowerElementName);
+            final Constructor<?> c = (Constructor<?>) elementNameMap.get(lowerElementName);
             if (c != null) {
                 try {
                     final WIFormElementImpl impl = (WIFormElementImpl) c.newInstance((Object[]) null);
@@ -212,6 +218,7 @@ public class WIFormParseHandler extends DefaultHandler {
     @Override
     public void endElement(final String uri, final String localName, final String qName) throws SAXException {
         final String lowerElementName = qName.toLowerCase();
+        log.debug("  end element name: " + lowerElementName); //$NON-NLS-1$
         if (handledElementNames.contains(lowerElementName)) {
             final WIFormElementImpl x = pop();
             x.endLoading();
